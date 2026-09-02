@@ -140,6 +140,13 @@ main{padding:14px 12px 90px;max-width:1180px;margin:0 auto}
   background:var(--painel-alt)}
 .campo input:focus{outline:2px solid var(--acento);outline-offset:-1px;background:var(--painel)}
 .campo .dica{font-size:11.5px;color:var(--txt3);line-height:1.35}
+.dcorpo>.dica{font-size:11.5px;color:var(--txt3);line-height:1.4}
+/* A chave é longa e ninguém a digita: o campo existe para ser selecionado
+   e copiado, então texto pequeno e monoespaçado, que quebra sem esconder. */
+.chave{width:100%;border-radius:10px;border:1px solid var(--linha-borda);
+  background:var(--painel-alt);padding:10px;resize:vertical;
+  font-family:ui-monospace,Consolas,monospace;font-size:11px;line-height:1.4;
+  word-break:break-all}
 .marcar{display:flex;align-items:center;gap:9px;font-size:14px}
 .marcar input{width:20px;height:20px;accent-color:var(--acento)}
 .derro{padding:0 16px;color:var(--ruim);font-size:12.5px;min-height:16px}
@@ -204,7 +211,7 @@ footer .espaco{flex:1}
    num arquivo, e a lista de fábrica, que já vem com os sistemas
    da Teccel — quem instala não começa numa tela vazia.
    ============================================================ */
-var VERSAO = "1.6";
+var VERSAO = "1.7";
 var CHAVE  = "atalhos-teccel-v1";
 
 /* Lista de fábrica: os sistemas que já estão no ar. Vale só na primeira
@@ -574,6 +581,8 @@ function abrirMenuCartao(idAtalho, ancora) {
 document.getElementById("btMenu").addEventListener("click", function (e) {
   e.stopPropagation();
   abrirMenu(e.currentTarget, [
+    { rot: "🔑 Levar para outro aparelho", acao: mostrarChave },
+    { separador: true },
     { rot: "⭳ Exportar (salvar arquivo)", acao: exportar },
     { rot: "⭱ Importar (abrir arquivo)", acao: importar },
     { separador: true },
@@ -728,6 +737,129 @@ function restaurarPadrao() {
   recado(novos.length + (novos.length === 1 ? " atalho trazido." : " atalhos trazidos."));
 }
 
+/* ---------- chave para outro aparelho ----------
+
+   A lista mora no aparelho, e o arquivo de exportar resolve — mas exige achar
+   o arquivo baixado do outro lado, o que no celular já é pedir demais. A
+   chave é a mesma lista dentro de um LINK: manda por WhatsApp, abre no outro
+   aparelho e ele oferece trazer tudo.
+
+   Vai comprimida (gzip) e em base64 de URL. Sem comprimir, 17 atalhos passam
+   de 2.000 caracteres; comprimidos ficam perto de um terço disso — link que
+   se manda sem susto. Navegador sem CompressionStream cai no texto puro, que
+   funciona igual, só mais comprido.
+
+   Nada passa por servidor: a chave É o link, e só quem o recebe vê a lista. */
+function paraBase64Url(bytes) {
+  var s = "";
+  for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function deBase64Url(txt) {
+  var s = String(txt).replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  var bruto = atob(s);
+  var bytes = new Uint8Array(bruto.length);
+  for (var i = 0; i < bruto.length; i++) bytes[i] = bruto.charCodeAt(i);
+  return bytes;
+}
+
+/* Nomes de campo curtos de propósito: cada letra economizada aparece
+   multiplicada pelo número de atalhos no tamanho do link. */
+function paraChave(lista) {
+  return JSON.stringify({ v: 1, i: lista.map(function (x) {
+    return { n: x.nome, u: x.url, g: x.grupo || "", f: x.fixado ? 1 : 0, c: x.icone || "" };
+  }) });
+}
+function daChave(texto) {
+  var d = JSON.parse(texto);
+  var lista = d.i || d.itens || [];
+  return lista.map(function (x) {
+    return { nome: x.n || x.nome, url: x.u || x.url, grupo: x.g || x.grupo || "",
+             fixado: !!(x.f || x.fixado), icone: x.c || x.icone || "" };
+  });
+}
+
+async function gerarChave() {
+  var texto = paraChave(itens);
+  var marca = "p", corpo;
+  try {
+    if (window.CompressionStream) {
+      var fluxo = new Blob([texto]).stream().pipeThrough(new CompressionStream("gzip"));
+      corpo = paraBase64Url(new Uint8Array(await new Response(fluxo).arrayBuffer()));
+      marca = "g";
+    }
+  } catch (e) { marca = "p"; }
+  if (marca === "p") corpo = paraBase64Url(new TextEncoder().encode(texto));
+  return location.origin + location.pathname + "#a" + marca + "=" + corpo;
+}
+
+async function lerChave(hash) {
+  var m = /^#?a([gp])=(.+)$/.exec(hash || "");
+  if (!m) return null;
+  var bytes = deBase64Url(m[2]);
+  if (m[1] !== "g") return daChave(new TextDecoder().decode(bytes));
+  var fluxo = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return daChave(await new Response(fluxo).text());
+}
+
+async function mostrarChave() {
+  if (!itens.length) { recado("Não há atalhos para levar."); return; }
+  var link;
+  try { link = await gerarChave(); }
+  catch (e) { recado("Não deu para gerar a chave."); return; }
+
+  var fundo = document.createElement("div");
+  fundo.className = "fundo";
+  fundo.innerHTML =
+    '<div class="dialogo"><div class="dcab"><h3>Levar para outro aparelho</h3>' +
+      '<button type="button" class="btn icone" data-x>&#10005;</button></div>' +
+    '<div class="dcorpo">' +
+      '<div style="line-height:1.5">Abra este link no outro aparelho. Ele vai perguntar se ' +
+        'quer trazer os <b>' + itens.length + '</b> atalhos — com grupos e fixados.</div>' +
+      '<textarea class="chave" readonly rows="4">' + esc(link) + '</textarea>' +
+      '<div class="dica">Mande por WhatsApp, e-mail ou bloco de notas. A lista viaja dentro do ' +
+        'próprio link — não passa por servidor nenhum.</div>' +
+    '</div>' +
+    '<div class="drod"><button type="button" class="btn" data-x>Fechar</button>' +
+      '<button type="button" class="btn principal" data-copiar>🔗 Copiar o link</button></div></div>';
+  document.body.appendChild(fundo);
+  fundo.querySelectorAll("[data-x]").forEach(function (b) { b.onclick = function () { fundo.remove(); }; });
+  var area = fundo.querySelector(".chave");
+  area.onclick = function () { area.select(); };
+  fundo.querySelector("[data-copiar]").onclick = function () { area.select(); copiar(link); };
+}
+
+/* Chegou pelo link: oferece trazer, nunca importa sozinho. A pessoa pode ter
+   aberto só para ver, e mexer na lista dela sem perguntar seria estragar o
+   aparelho de quem recebeu. */
+async function verSeVeioChave() {
+  if (!location.hash || location.hash.indexOf("#a") !== 0) return;
+  var recebidos = null;
+  try { recebidos = await lerChave(location.hash); } catch (e) { recebidos = null; }
+  /* Limpa o endereço de todo jeito: recarregar não pode perguntar de novo, e
+     o link com a lista inteira não precisa ficar na barra. */
+  history.replaceState(null, "", location.pathname + location.search);
+  if (!recebidos || !recebidos.length) { recado("O link não tem uma lista válida."); return; }
+
+  confirmar("Trazer atalhos", "Este link traz <b>" + recebidos.length + "</b> atalho" +
+    (recebidos.length === 1 ? "" : "s") + ". Eles entram junto com os " + itens.length +
+    " que já estão aqui — endereço repetido não entra duas vezes.", "Trazer", function () {
+      var jaTem = {};
+      itens.forEach(function (i) { jaTem[i.url] = true; });
+      var n = 0;
+      recebidos.forEach(function (x) {
+        var url = normalizarUrl(x.url);
+        if (!url || jaTem[url]) return;
+        jaTem[url] = true; n++;
+        itens.push({ id: id(), nome: String(x.nome || dominio(url)), url: url,
+          icone: normalizarUrl(x.icone), grupo: String(x.grupo || ""), fixado: !!x.fixado });
+      });
+      Guardados.gravar(); desenhar();
+      recado(n ? n + (n === 1 ? " atalho trazido." : " atalhos trazidos.") : "Todos já estavam aqui.");
+    });
+}
+
 /* ---------- exportar e importar ----------
    A lista mora no aparelho, então trocar de celular apagaria tudo. O arquivo
    é a ponte: exporta num, importa no outro. Também serve de backup antes de
@@ -837,6 +969,7 @@ if (guardado) {
   Guardados.gravar();
 }
 desenhar();
+verSeVeioChave();
 rodape();
 
 if ("serviceWorker" in navigator) {

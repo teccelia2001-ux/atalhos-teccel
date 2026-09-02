@@ -14,7 +14,7 @@
    próprio aparelho (localStorage), gravados pela página. Ver Guardados,
    no index.html. */
 
-var VERSAO = "atalhos-v7";   // v7: Programacao de Obras (02/09/2026)
+var VERSAO = "atalhos-v8";   // v8: chave para levar a lista a outro aparelho (02/09/2026)
 var ESSENCIAIS = [
   "./",
   "./index.html",
