@@ -204,7 +204,7 @@ footer .espaco{flex:1}
    num arquivo, e a lista de fábrica, que já vem com os sistemas
    da Teccel — quem instala não começa numa tela vazia.
    ============================================================ */
-var VERSAO = "1.3";
+var VERSAO = "1.4";
 var CHAVE  = "atalhos-teccel-v1";
 
 /* Lista de fábrica: os sistemas que já estão no ar. Vale só na primeira
@@ -315,23 +315,37 @@ function corDoSelo(chave) {
   var lum = 38 + (h >> 3) % 12;
   return "hsl(" + matiz + " 72% " + lum + "%)";
 }
-/* Ícone do cartão: o mesmo que o navegador mostra na aba do site.
+/* Ícone do cartão: o MESMO que o navegador mostra na aba do site.
 
-   Três origens, nesta ordem:
-   1. o que a pessoa digitou no campo Ícone, se digitou;
-   2. o ícone que já vem DENTRO deste app, quando o link é de um sistema da
-      Teccel publicado no github.io — vale offline e carrega na hora;
-   3. o /favicon.ico do próprio site.
+   Cada sistema nosso tem o seu — o painel é o "t" laranja, a análise de obra
+   paga é o gráfico azul, obras por serviço é a lupa. Antes todos eles caíam
+   num ícone genérico da Teccel e os cartões ficavam idênticos, o que é
+   justamente o contrário de reconhecer o sistema de relance.
 
-   Não uso serviço de favicon de terceiro (aquele do Google, por exemplo): ele
+   Por que uma tabela, e não buscar o ícone no site: nossos apps declaram o
+   ícone de jeitos diferentes — arquivo em /icones, `data:` dentro do HTML, e
+   no caso do painel um `<link>` criado por JavaScript, que só existe depois
+   da página rodar. Não há como pegar os três de fora. Aqui eles vêm com o
+   app: carregam na hora e valem sem sinal.
+
+   Ordem: campo Ícone do cadastro → tabela abaixo → /favicon.ico do site.
+   Não uso serviço de favicon de terceiro (o do Google, por exemplo): ele
    entregaria a lista de sites da equipe para fora e não funcionaria offline
-   nem dentro de rede fechada. Se nada carregar, o cartão fica com as
-   iniciais coloridas de sempre — que é um bom padrão, não um erro. */
-var NOSSO_DOMINIO = "teccelia2001-ux.github.io";
+   nem dentro de rede fechada. Se nada carregar, o cartão fica com as iniciais
+   coloridas — que é um bom padrão, não um erro. */
+var ICONES_DOS_NOSSOS = [
+  { onde: "/painel-inspecoes-sesmt", arquivo: "icones/site-painel.png" },
+  { onde: "/app-inspecoes-sesmt",    arquivo: "icones/site-inspecoes.png" },
+  { onde: "/analise-obra-paga",      arquivo: "icones/site-analise.svg" },
+  { onde: "/obras-por-servico",      arquivo: "icones/site-obras.svg" },
+  { onde: "/controle-leite",         arquivo: "icones/site-leite.png" },
+  { onde: "/atalhos-teccel",         arquivo: "icones/icone-192.png" }
+];
 function iconeDoAtalho(it) {
   if (it.icone) return it.icone;
-  var host = dominio(it.url);
-  if (host === NOSSO_DOMINIO) return "icones/icone-192.png";
+  for (var i = 0; i < ICONES_DOS_NOSSOS.length; i++) {
+    if (it.url.indexOf(ICONES_DOS_NOSSOS[i].onde) >= 0) return ICONES_DOS_NOSSOS[i].arquivo;
+  }
   try { return new URL(it.url).origin + "/favicon.ico"; } catch (e) { return ""; }
 }
 

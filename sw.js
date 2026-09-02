@@ -14,7 +14,7 @@
    próprio aparelho (localStorage), gravados pela página. Ver Guardados,
    no index.html. */
 
-var VERSAO = "atalhos-v4";   // v4: Obras por servico na lista de fabrica (02/09/2026)
+var VERSAO = "atalhos-v5";   // v5: icone proprio de cada sistema (02/09/2026)
 var ESSENCIAIS = [
   "./",
   "./index.html",
@@ -22,7 +22,13 @@ var ESSENCIAIS = [
   "./icones/icone-192.png",
   "./icones/icone-512.png",
   "./icones/icone-512-mascara.png",
-  "./icones/icone-apple-180.png"
+  "./icones/icone-apple-180.png",
+  "./icones/logo-teccel.png",
+  "./icones/site-painel.png",
+  "./icones/site-inspecoes.png",
+  "./icones/site-analise.svg",
+  "./icones/site-obras.svg",
+  "./icones/site-leite.png"
 ];
 
 self.addEventListener("install", function (e) {
