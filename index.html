@@ -90,9 +90,14 @@ main{padding:14px 12px 90px;max-width:1180px;margin:0 auto}
 /* selo com as iniciais: cor tirada do próprio endereço, então cada sistema
    tem sempre a mesma — sem depender de buscar favicon na internet, que não
    funcionaria offline nem dentro de rede fechada */
-.selo{flex:0 0 auto;width:42px;height:42px;border-radius:11px;display:flex;
+.selo{position:relative;flex:0 0 auto;width:42px;height:42px;border-radius:11px;display:flex;
   align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;
-  letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+  letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,.25);overflow:hidden}
+/* Com ícone do site, o selo vira moldura clara: o ícone é desenhado para
+   fundo branco — sobre o vinho da marca, logo escuro sumiria. */
+.selo.comIcone{background:#fff !important;border:1px solid var(--linha-borda);
+  text-shadow:none;padding:5px}
+.selo img{width:100%;height:100%;object-fit:contain;display:block}
 /* min-width:0 é o que deixa o texto ser CORTADO em vez de empurrar o cartão:
    sem ele, um endereço longo passava por cima do nome. Item de flex tem
    largura mínima automática, e ela não é zero. */
@@ -199,7 +204,7 @@ footer .espaco{flex:1}
    num arquivo, e a lista de fábrica, que já vem com os sistemas
    da Teccel — quem instala não começa numa tela vazia.
    ============================================================ */
-var VERSAO = "1.1";
+var VERSAO = "1.2";
 var CHAVE  = "atalhos-teccel-v1";
 
 /* Lista de fábrica: os sistemas que já estão no ar. Vale só na primeira
@@ -309,6 +314,26 @@ function corDoSelo(chave) {
   var lum = 38 + (h >> 3) % 12;
   return "hsl(" + matiz + " 72% " + lum + "%)";
 }
+/* Ícone do cartão: o mesmo que o navegador mostra na aba do site.
+
+   Três origens, nesta ordem:
+   1. o que a pessoa digitou no campo Ícone, se digitou;
+   2. o ícone que já vem DENTRO deste app, quando o link é de um sistema da
+      Teccel publicado no github.io — vale offline e carrega na hora;
+   3. o /favicon.ico do próprio site.
+
+   Não uso serviço de favicon de terceiro (aquele do Google, por exemplo): ele
+   entregaria a lista de sites da equipe para fora e não funcionaria offline
+   nem dentro de rede fechada. Se nada carregar, o cartão fica com as
+   iniciais coloridas de sempre — que é um bom padrão, não um erro. */
+var NOSSO_DOMINIO = "teccelia2001-ux.github.io";
+function iconeDoAtalho(it) {
+  if (it.icone) return it.icone;
+  var host = dominio(it.url);
+  if (host === NOSSO_DOMINIO) return "icones/icone-192.png";
+  try { return new URL(it.url).origin + "/favicon.ico"; } catch (e) { return ""; }
+}
+
 function recado(txt) {
   var v = document.getElementById("recado");
   if (v) v.remove();
@@ -375,13 +400,31 @@ function cartaoHTML(it) {
     '<a class="capa" href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer"' +
       ' aria-label="Abrir ' + esc(it.nome) + '"></a>' +
     (it.fixado ? '<span class="fixado" title="Fixado">★</span>' : "") +
-    '<span class="selo" style="background:' + corDoSelo(it.url) + '">' + esc(iniciais(it.nome)) + "</span>" +
+    '<span class="selo" style="background:' + corDoSelo(it.url) + '">' +
+      '<span class="letras">' + esc(iniciais(it.nome)) + "</span>" +
+      (iconeDoAtalho(it) ? '<img class="ico" alt="" src="' + esc(iconeDoAtalho(it)) + '">' : "") +
+    "</span>" +
     '<span class="txt"><span class="tit">' + esc(it.nome) + "</span>" +
     '<span class="end">' + esc(dominio(it.url)) + "</span></span>" +
     '<button class="mais" title="Opções" aria-label="Opções de ' + esc(it.nome) + '">⋮</button></div>';
 }
 
 function ligarCartoes() {
+  /* O ícone entra escondido e só aparece se CARREGAR. Assim um site sem
+     favicon, ou o app aberto sem sinal, cai nas iniciais em vez de mostrar
+     aquele quadradinho de imagem quebrada. */
+  document.querySelectorAll(".selo .ico").forEach(function (img) {
+    img.style.display = "none";
+    img.addEventListener("load", function () {
+      if (!img.naturalWidth) return;          // alguns servidores devolvem 1x1
+      var selo = img.parentNode;
+      selo.classList.add("comIcone");
+      selo.querySelector(".letras").style.display = "none";
+      img.style.display = "block";
+    });
+    img.addEventListener("error", function () { img.remove(); });
+  });
+
   document.querySelectorAll(".atalho").forEach(function (a) {
     a.querySelector(".mais").addEventListener("click", function (e) {
       /* stopPropagation também fecha o menu global do documento; sem ele o
@@ -560,6 +603,11 @@ function abrirFormulario(existente) {
           '<datalist id="lista-grupos">' + grupos.map(function (g) {
             return '<option value="' + esc(g) + '">'; }).join("") + "</datalist>" +
           '<span class="dica">Serve para separar em seções. Em branco, entra em “Outros”.</span></label>' +
+        '<label class="campo"><span>Ícone (opcional)</span>' +
+          '<input name="icone" value="' + esc(it.icone || "") + '" placeholder="deixe em branco: eu busco no site" ' +
+            'inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false">' +
+          '<span class="dica">Endereço de uma imagem. Em branco, o app usa o ícone do próprio ' +
+            'site — e, se ele não tiver, as iniciais coloridas.</span></label>' +
         '<label class="marcar"><input type="checkbox" name="fixado"' + (it.fixado ? " checked" : "") +
           "> Fixar no topo</label>" +
       "</div>" +
@@ -588,11 +636,17 @@ function abrirFormulario(existente) {
     if (!nome) { erro.textContent = "Dê um nome ao atalho."; return; }
     if (!url) { erro.textContent = "Endereço inválido. Exemplo: painel.teccel.com.br"; return; }
 
+    /* O ícone passa pela MESMA validação do endereço: ele vira o src de uma
+       imagem, e um "javascript:" ali seria o mesmo furo. Ícone inválido é
+       descartado em silêncio — o cartão cai nas iniciais, e travar o
+       formulário por causa de um enfeite seria pior. */
+    var icone = normalizarUrl(form.elements.icone.value);
+
     if (novo) {
-      itens.push({ id: id(), nome: nome, url: url,
+      itens.push({ id: id(), nome: nome, url: url, icone: icone,
         grupo: form.elements.grupo.value.trim(), fixado: form.elements.fixado.checked });
     } else {
-      it.nome = nome; it.url = url;
+      it.nome = nome; it.url = url; it.icone = icone;
       it.grupo = form.elements.grupo.value.trim();
       it.fixado = form.elements.fixado.checked;
     }
@@ -691,6 +745,7 @@ function importar() {
         if (!url || jaTem[url]) return;
         jaTem[url] = true; entraram++;
         itens.push({ id: id(), nome: String(x.nome || dominio(url)), url: url,
+          icone: normalizarUrl(x && x.icone),   // mesma validação: nada de javascript:
           grupo: String(x.grupo || ""), fixado: !!x.fixado });
       });
       Guardados.gravar(); desenhar();

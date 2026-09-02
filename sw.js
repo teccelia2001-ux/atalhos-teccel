@@ -14,7 +14,7 @@
    próprio aparelho (localStorage), gravados pela página. Ver Guardados,
    no index.html. */
 
-var VERSAO = "atalhos-v2";   // v2: renome da Análise manual de obras pagas (02/09/2026)
+var VERSAO = "atalhos-v3";   // v3: icone do site no cartao (02/09/2026)
 var ESSENCIAIS = [
   "./",
   "./index.html",
