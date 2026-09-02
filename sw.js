@@ -14,7 +14,7 @@
    próprio aparelho (localStorage), gravados pela página. Ver Guardados,
    no index.html. */
 
-var VERSAO = "atalhos-v8";   // v8: chave para levar a lista a outro aparelho (02/09/2026)
+var VERSAO = "atalhos-v9";   // v9: icone do Citrix Workspace (02/09/2026)
 var ESSENCIAIS = [
   "./",
   "./index.html",
@@ -30,7 +30,8 @@ var ESSENCIAIS = [
   "./icones/site-obras.svg",
   "./icones/site-leite.png",
   "./icones/site-detalhada.svg",
-  "./icones/site-programacao.png"
+  "./icones/site-programacao.png",
+  "./icones/site-citrix.png"
 ];
 
 self.addEventListener("install", function (e) {
