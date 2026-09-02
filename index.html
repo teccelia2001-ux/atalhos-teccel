@@ -1,0 +1,748 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#fb4513">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icones/icone-192.png">
+<!-- iOS ignora o manifest: precisa destas para abrir sem a barra de endereço -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Atalhos">
+<link rel="apple-touch-icon" href="icones/icone-apple-180.png">
+<title>Atalhos Teccel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap">
+<style>
+/* ============================================================
+   Mesma identidade dos outros apps: branco com laranja Teccel.
+   Serve celular e PC no mesmo layout — a grade de atalhos se
+   ajusta pela largura, e todo alvo de toque tem 44px ou mais.
+   ============================================================ */
+:root{
+  --fundo:#ffffff; --painel:#ffffff; --painel-alt:#fbf8f4;
+  --linha-borda:#e6e0d8; --sombra:0 1px 3px rgba(60,44,28,.08);
+  --txt:#241f1a; --txt2:#7b7168; --txt3:#a49a90;
+  --acento:#fb4513; --acento-forte:#c8300a; --acento-suave:#fdeee9;
+  --ruim:#c62828; --bom:#2e7d32;
+  --topo:60px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--fundo);color:var(--txt);
+  font-family:"Open Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:15px;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.oculto{display:none !important}
+
+/* ---- topo ---- */
+#topo{position:sticky;top:0;z-index:20;min-height:var(--topo);display:flex;align-items:center;
+  gap:10px;padding:8px 12px;background:var(--painel);
+  border-bottom:3px solid var(--acento);box-shadow:0 1px 6px rgba(60,44,28,.06)}
+#topo .logo{height:26px;width:auto;border-radius:3px}
+#topo .nome{font-weight:800;letter-spacing:.02em;line-height:1.1}
+#topo .nome small{display:block;font-size:10px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--txt2)}
+#topo .espaco{flex:1}
+.btn{height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--linha-borda);
+  background:var(--painel);color:var(--txt);font-weight:700;font-size:13px;
+  display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.btn:hover{background:var(--painel-alt)}
+.btn.principal{background:var(--acento);border-color:var(--acento);color:#fff}
+.btn.principal:hover{background:var(--acento-forte)}
+.btn.icone{width:40px;padding:0;justify-content:center;font-size:17px}
+.btn:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+
+/* ---- busca ---- */
+#barra{position:sticky;top:var(--topo);z-index:19;display:flex;gap:8px;align-items:center;
+  padding:10px 12px;background:var(--fundo);border-bottom:1px solid var(--linha-borda)}
+#busca{flex:1;height:42px;border-radius:10px;border:1px solid var(--linha-borda);
+  padding:0 12px;background:var(--painel-alt);min-width:0}
+#busca:focus{outline:2px solid var(--acento);outline-offset:-1px;background:var(--painel)}
+#conta{font-size:11px;font-weight:700;color:var(--txt3);white-space:nowrap}
+
+/* ---- grade de atalhos ---- */
+main{padding:14px 12px 90px;max-width:1180px;margin:0 auto}
+.grupo{margin-bottom:22px}
+.grupo h2{display:flex;align-items:center;gap:8px;margin:0 0 10px;
+  font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--txt2)}
+.grupo h2::after{content:"";flex:1;height:1px;background:var(--linha-borda)}
+.grade{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+
+/* O cartão inteiro é o alvo de toque: em pé de celular, isso vale mais do que
+   um texto clicável no meio do cartão. Quem leva o toque é uma capa invisível
+   por cima — o link não pode ENVOLVER o cartão, senão o botão ⋮ ficaria dentro
+   de uma âncora, que é HTML inválido e dá comportamento estranho em alguns
+   navegadores. */
+.atalho{position:relative;display:flex;align-items:center;gap:12px;
+  padding:12px 42px 12px 12px;border-radius:12px;
+  background:var(--painel);border:1px solid var(--linha-borda);box-shadow:var(--sombra);
+  color:inherit;min-height:66px;
+  transition:transform .12s,box-shadow .12s,border-color .12s}
+.atalho .capa{position:absolute;inset:0;z-index:1;border-radius:12px;
+  -webkit-tap-highlight-color:transparent}
+.atalho .capa:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.atalho:hover{border-color:var(--acento);box-shadow:0 4px 14px rgba(251,69,19,.16);
+  transform:translateY(-1px)}
+.atalho:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.atalho.arrastando{opacity:.4}
+.atalho.alvo{border-color:var(--acento);border-style:dashed}
+/* selo com as iniciais: cor tirada do próprio endereço, então cada sistema
+   tem sempre a mesma — sem depender de buscar favicon na internet, que não
+   funcionaria offline nem dentro de rede fechada */
+.selo{flex:0 0 auto;width:42px;height:42px;border-radius:11px;display:flex;
+  align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;
+  letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+/* min-width:0 é o que deixa o texto ser CORTADO em vez de empurrar o cartão:
+   sem ele, um endereço longo passava por cima do nome. Item de flex tem
+   largura mínima automática, e ela não é zero. */
+.atalho .txt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.atalho .tit,.atalho .end{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.atalho .tit{font-weight:700;font-size:14.5px;line-height:1.2}
+.atalho .end{font-size:11.5px;color:var(--txt3);line-height:1.3}
+.atalho .fixado{position:absolute;left:6px;top:6px;font-size:11px;z-index:2}
+.mais{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:2;
+  width:32px;height:32px;border-radius:8px;border:1px solid transparent;background:transparent;
+  color:var(--txt3);font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center}
+.mais:hover{background:var(--painel-alt);border-color:var(--linha-borda);color:var(--txt)}
+
+/* ---- menu do cartão ---- */
+.menu{position:fixed;z-index:60;min-width:190px;padding:5px;border-radius:12px;
+  background:var(--painel);border:1px solid var(--linha-borda);
+  box-shadow:0 12px 34px rgba(60,44,28,.20)}
+.menu button{display:flex;align-items:center;gap:9px;width:100%;height:38px;padding:0 10px;
+  border:0;background:transparent;border-radius:8px;text-align:left;font-size:13.5px}
+.menu button:hover{background:var(--painel-alt)}
+.menu button.perigo{color:var(--ruim)}
+.menu hr{border:0;border-top:1px solid var(--linha-borda);margin:4px 2px}
+
+/* ---- vazio ---- */
+.vazio{text-align:center;color:var(--txt2);padding:50px 20px;line-height:1.6}
+.vazio b{display:block;color:var(--txt);font-size:17px;margin-bottom:6px}
+
+/* ---- diálogo ---- */
+.fundo{position:fixed;inset:0;z-index:70;background:rgba(36,31,26,.45);
+  display:flex;align-items:center;justify-content:center;padding:16px}
+.dialogo{width:100%;max-width:430px;max-height:92vh;overflow:auto;
+  background:var(--painel);border-radius:16px;box-shadow:0 20px 60px rgba(60,44,28,.3)}
+.dcab{display:flex;align-items:center;gap:10px;padding:14px 16px;
+  border-bottom:1px solid var(--linha-borda)}
+.dcab h3{margin:0;font-size:16px;flex:1}
+.dcorpo{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.campo{display:flex;flex-direction:column;gap:5px}
+.campo span{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--txt2)}
+.campo input{height:46px;border-radius:10px;border:1px solid var(--linha-borda);padding:0 12px;
+  background:var(--painel-alt)}
+.campo input:focus{outline:2px solid var(--acento);outline-offset:-1px;background:var(--painel)}
+.campo .dica{font-size:11.5px;color:var(--txt3);line-height:1.35}
+.marcar{display:flex;align-items:center;gap:9px;font-size:14px}
+.marcar input{width:20px;height:20px;accent-color:var(--acento)}
+.derro{padding:0 16px;color:var(--ruim);font-size:12.5px;min-height:16px}
+.drod{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px 16px}
+.drod .btn{height:44px}
+
+/* ---- recado curto no rodapé ---- */
+#recado{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:80;
+  background:#241f1a;color:#fff;padding:11px 18px;border-radius:22px;font-size:13.5px;
+  font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.28);max-width:92vw;text-align:center}
+
+/* ---- rodapé ---- */
+footer{position:fixed;left:0;right:0;bottom:0;z-index:15;display:flex;align-items:center;
+  gap:10px;padding:8px 12px;background:var(--painel);border-top:1px solid var(--linha-borda);
+  font-size:11px;color:var(--txt3)}
+footer .espaco{flex:1}
+
+@media (max-width:560px){
+  #topo .nome{font-size:14px}
+  main{padding:12px 10px 84px}
+  .grade{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+  .rotulo-some{display:none}
+}
+</style>
+
+<header id="topo">
+  <img class="logo" src="icones/logo-teccel.png" alt="Teccel Energia">
+  <div class="nome">Atalhos<small>Teccel</small></div>
+  <div class="espaco"></div>
+  <button class="btn oculto" id="btInstalar" title="Instalar no aparelho">⤓<span class="rotulo-some"> Instalar</span></button>
+  <button class="btn principal" id="btNovo" title="Novo atalho">＋<span class="rotulo-some"> Novo</span></button>
+  <button class="btn icone" id="btMenu" title="Mais opções" aria-label="Mais opções">⋮</button>
+</header>
+
+<div id="barra">
+  <input id="busca" type="search" placeholder="Buscar atalho…" aria-label="Buscar atalho"
+         autocomplete="off">
+  <span id="conta"></span>
+</div>
+
+<main id="lista"></main>
+
+<footer>
+  <span id="estado"></span>
+  <span class="espaco"></span>
+  <span id="versao"></span>
+</footer>
+
+<script>
+/* ============================================================
+   ATALHOS TECCEL
+
+   Uma tela só: os links que a equipe usa, num toque. Instalável
+   no celular e no PC — instalado, abre sem barra de endereço e
+   funciona sem sinal, porque a lista mora no próprio aparelho.
+
+   POR QUE NÃO TEM LOGIN NEM BANCO: aqui não há dado de ninguém,
+   só endereço de site — o mesmo que estaria nos favoritos do
+   navegador. Login para guardar favorito seria atrito sem
+   ganho. A troca: a lista é DAQUELE aparelho. Por isso existem
+   o Exportar e o Importar, que levam a lista de um para o outro
+   num arquivo, e a lista de fábrica, que já vem com os sistemas
+   da Teccel — quem instala não começa numa tela vazia.
+   ============================================================ */
+var VERSAO = "1.0";
+var CHAVE  = "atalhos-teccel-v1";
+
+/* Lista de fábrica: os sistemas que já estão no ar. Vale só na primeira
+   abertura; depois o que manda é o que estiver guardado no aparelho. */
+var PADRAO = [
+  { nome: "Painel de Inspeções SESMT", url: "https://teccelia2001-ux.github.io/painel-inspecoes-sesmt/", grupo: "SESMT" },
+  { nome: "App de Inspeções (celular)", url: "https://teccelia2001-ux.github.io/app-inspecoes-sesmt/",   grupo: "SESMT" },
+  { nome: "Análise de obra paga",       url: "https://teccelia2001-ux.github.io/analise-obra-paga/",      grupo: "Obras" },
+  { nome: "Controle de leite",          url: "https://teccelia2001-ux.github.io/controle-leite/",         grupo: "Operação" }
+];
+
+var itens = [];
+var busca = "";
+var eventoInstalar = null;
+
+/* ---------- guardar e ler ---------- */
+var Guardados = {
+  ler: function () {
+    try {
+      var cru = localStorage.getItem(CHAVE);
+      if (!cru) return null;
+      var d = JSON.parse(cru);
+      return Array.isArray(d.itens) ? d.itens : null;
+    } catch (e) { return null; }
+  },
+  gravar: function () {
+    try {
+      localStorage.setItem(CHAVE, JSON.stringify({ itens: itens, atualizado: Date.now() }));
+      return true;
+    } catch (e) {
+      /* Aparelho com armazenamento cheio ou navegação anônima: avisar é
+         obrigatório, senão a pessoa cadastra dez atalhos e perde todos ao
+         fechar sem nunca saber por quê. */
+      recado("Não deu para salvar neste aparelho — o que você mudou vale só até fechar.");
+      return false;
+    }
+  }
+};
+
+/* ---------- utilidades ---------- */
+function esc(t) {
+  return String(t == null ? "" : t)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function id() { return "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+/* Endereço digitado como "painel.teccel.com.br" tem de virar link de verdade.
+   Sem isto o navegador trataria como caminho relativo e abriria o próprio app
+   de novo — o clássico "cliquei e não foi para lugar nenhum". */
+function normalizarUrl(u) {
+  u = String(u || "").trim();
+  if (!u) return "";
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = "https://" + u;
+
+  var p;
+  try { p = new URL(u); } catch (e) { return ""; }
+
+  /* SÓ http e https. O cartão vira um link de verdade, e um endereço
+     "javascript:..." guardado aqui rodaria código dentro do app no clique —
+     um atalho importado de arquivo de outra pessoa não pode ter esse poder. */
+  if (p.protocol !== "http:" && p.protocol !== "https:") return "";
+
+  /* new URL() é generoso demais para servir de validação sozinho: ele aceita
+     "https://não é url" (codifica os espaços) e devolveria um cartão que não
+     abre lugar nenhum. O domínio tem de parecer um domínio. */
+  if (!/^[a-z0-9.-]+$/i.test(p.hostname)) return "";
+  if (p.hostname.indexOf(".") < 0 && p.hostname !== "localhost") return "";
+
+  return p.href;
+}
+function dominio(u) {
+  try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; }
+}
+/* Iniciais para o selo: duas letras das palavras que dizem alguma coisa.
+   "Painel de Inspeções" dava "PD" — a segunda letra vinha do "de". Ligações
+   como de, da, do, e, no ficam de fora. */
+var LIGACOES = ["de", "da", "do", "das", "dos", "e", "no", "na", "em", "a", "o", "para", "por"];
+function iniciais(nome) {
+  var p = String(nome || "?").trim().split(/\s+/)
+    .filter(function (x) { return /[a-z0-9]/i.test(x); });
+  var uteis = p.filter(function (x) { return LIGACOES.indexOf(semAcento(x)) < 0; });
+  if (uteis.length) p = uteis;
+  if (!p.length) return "?";
+  if (p.length === 1) return p[0].slice(0, 2).toUpperCase();
+  return (p[0][0] + p[1][0]).toUpperCase();
+}
+/* Cor do selo tirada do endereço: o mesmo sistema fica sempre da mesma cor,
+   em qualquer aparelho, sem guardar cor nenhuma. Fica na faixa quente da
+   marca (laranjas, terras e vinhos) para a tela não virar arco-íris. */
+function corDoSelo(chave) {
+  var h = 0, s = String(chave || "");
+  for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  var matiz = [12, 24, 36, 355, 342, 5, 30][h % 7];
+  var lum = 38 + (h >> 3) % 12;
+  return "hsl(" + matiz + " 72% " + lum + "%)";
+}
+function recado(txt) {
+  var v = document.getElementById("recado");
+  if (v) v.remove();
+  var d = document.createElement("div");
+  d.id = "recado"; d.textContent = txt;
+  document.body.appendChild(d);
+  setTimeout(function () { if (d.parentNode) d.remove(); }, 3200);
+}
+function semAcento(t) {
+  return String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+/* ---------- desenhar a tela ---------- */
+function desenhar() {
+  var alvo = document.getElementById("lista");
+  var termo = semAcento(busca);
+  var vis = itens.filter(function (it) {
+    if (!termo) return true;
+    return semAcento(it.nome + " " + it.url + " " + (it.grupo || "")).indexOf(termo) >= 0;
+  });
+
+  document.getElementById("conta").textContent =
+    itens.length ? (termo ? vis.length + " de " + itens.length : itens.length + (itens.length === 1 ? " atalho" : " atalhos")) : "";
+
+  if (!itens.length) {
+    alvo.innerHTML = '<div class="vazio"><b>Nenhum atalho ainda</b>' +
+      'Toque em <b style="display:inline">＋ Novo</b> para guardar o primeiro link.<br>' +
+      'Ou use o menu ⋮ para trazer de volta a lista dos sistemas da Teccel.</div>';
+    return;
+  }
+  if (!vis.length) {
+    alvo.innerHTML = '<div class="vazio"><b>Nada encontrado</b>Nenhum atalho combina com “' +
+      esc(busca) + '”.</div>';
+    return;
+  }
+
+  /* Fixados primeiro, em grupo próprio: é o que a pessoa abre todo dia.
+     Depois os grupos, na ordem em que aparecem na lista — a ordem é do
+     usuário, por arrastar ou pelo menu, e não alfabética. */
+  var blocos = [];
+  var fix = vis.filter(function (i) { return i.fixado; });
+  if (fix.length) blocos.push({ nome: "★ Fixados", itens: fix, fixados: true });
+
+  var porGrupo = {};
+  var ordem = [];
+  vis.forEach(function (it) {
+    if (it.fixado) return;
+    var g = (it.grupo || "").trim() || "Outros";
+    if (!porGrupo[g]) { porGrupo[g] = []; ordem.push(g); }
+    porGrupo[g].push(it);
+  });
+  ordem.forEach(function (g) { blocos.push({ nome: g, itens: porGrupo[g] }); });
+
+  alvo.innerHTML = blocos.map(function (b) {
+    return '<section class="grupo"><h2>' + esc(b.nome) + "</h2><div class=\"grade\">" +
+      b.itens.map(cartaoHTML).join("") + "</div></section>";
+  }).join("");
+
+  ligarCartoes();
+}
+
+function cartaoHTML(it) {
+  return '<div class="atalho" draggable="true" data-id="' + it.id + '" title="' + esc(it.url) + '">' +
+    '<a class="capa" href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer"' +
+      ' aria-label="Abrir ' + esc(it.nome) + '"></a>' +
+    (it.fixado ? '<span class="fixado" title="Fixado">★</span>' : "") +
+    '<span class="selo" style="background:' + corDoSelo(it.url) + '">' + esc(iniciais(it.nome)) + "</span>" +
+    '<span class="txt"><span class="tit">' + esc(it.nome) + "</span>" +
+    '<span class="end">' + esc(dominio(it.url)) + "</span></span>" +
+    '<button class="mais" title="Opções" aria-label="Opções de ' + esc(it.nome) + '">⋮</button></div>';
+}
+
+function ligarCartoes() {
+  document.querySelectorAll(".atalho").forEach(function (a) {
+    a.querySelector(".mais").addEventListener("click", function (e) {
+      /* stopPropagation também fecha o menu global do documento; sem ele o
+         menu abriria e se fecharia no mesmo clique. */
+      e.preventDefault(); e.stopPropagation();
+      abrirMenuCartao(a.dataset.id, e.currentTarget);
+    });
+
+    /* Arrastar para reordenar — no PC. No celular a mesma coisa é feita pelo
+       menu do cartão (Mover para cima / para baixo), porque arrastar com o
+       dedo briga com a rolagem da página. */
+    a.addEventListener("dragstart", function (e) {
+      arrastando = a.dataset.id;
+      a.classList.add("arrastando");
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", a.dataset.id); } catch (x) {}
+    });
+    a.addEventListener("dragend", function () {
+      arrastando = null;
+      document.querySelectorAll(".atalho").forEach(function (x) {
+        x.classList.remove("arrastando"); x.classList.remove("alvo");
+      });
+    });
+    a.addEventListener("dragover", function (e) {
+      if (!arrastando || arrastando === a.dataset.id) return;
+      e.preventDefault(); a.classList.add("alvo");
+    });
+    a.addEventListener("dragleave", function () { a.classList.remove("alvo"); });
+    a.addEventListener("drop", function (e) {
+      e.preventDefault(); a.classList.remove("alvo");
+      if (!arrastando || arrastando === a.dataset.id) return;
+      mover(arrastando, a.dataset.id);
+    });
+  });
+}
+var arrastando = null;
+
+function achar(idAtalho) {
+  for (var i = 0; i < itens.length; i++) if (itens[i].id === idAtalho) return i;
+  return -1;
+}
+
+/* Solta o arrastado na posição do alvo. O grupo do alvo vale também: arrastar
+   um atalho para dentro de outro grupo é a forma natural de mudá-lo de grupo,
+   e ninguém espera ter de abrir o formulário para isso. */
+function mover(idOrigem, idAlvo) {
+  var a = achar(idOrigem), b = achar(idAlvo);
+  if (a < 0 || b < 0) return;
+  var it = itens[a];
+  var alvo = itens[b];
+  it.grupo = alvo.grupo;
+  it.fixado = alvo.fixado;
+  itens.splice(a, 1);
+  itens.splice(achar(idAlvo) + (a < b ? 1 : 0), 0, it);
+  Guardados.gravar();
+  desenhar();
+}
+
+function moverPasso(idAtalho, passo) {
+  var i = achar(idAtalho);
+  var j = i + passo;
+  if (i < 0 || j < 0 || j >= itens.length) return;
+  var t = itens[i]; itens[i] = itens[j]; itens[j] = t;
+  Guardados.gravar();
+  desenhar();
+}
+
+/* ---------- menus ---------- */
+function fecharMenus() {
+  document.querySelectorAll(".menu").forEach(function (m) { m.remove(); });
+}
+document.addEventListener("click", fecharMenus);
+document.addEventListener("keydown", function (e) { if (e.key === "Escape") fecharMenus(); });
+
+function abrirMenu(ancora, opcoes) {
+  fecharMenus();
+  var m = document.createElement("div");
+  m.className = "menu";
+  m.innerHTML = opcoes.map(function (o) {
+    return o.separador ? "<hr>" :
+      '<button type="button" class="' + (o.perigo ? "perigo" : "") + '">' + o.rot + "</button>";
+  }).join("");
+  document.body.appendChild(m);
+
+  var r = ancora.getBoundingClientRect();
+  var larg = m.offsetWidth, alt = m.offsetHeight;
+  /* Cabe onde couber: perto da borda de baixo o menu abre para cima, e perto
+     da direita ele encosta pela direita. Foi o que já mordeu no painel. */
+  var x = Math.min(r.left, window.innerWidth - larg - 8);
+  var y = r.bottom + 6 + alt > window.innerHeight ? r.top - alt - 6 : r.bottom + 6;
+  m.style.left = Math.max(8, x) + "px";
+  m.style.top = Math.max(8, y) + "px";
+  m.addEventListener("click", function (e) { e.stopPropagation(); });
+
+  var botoes = m.querySelectorAll("button");
+  var n = 0;
+  opcoes.forEach(function (o) {
+    if (o.separador) return;
+    var b = botoes[n++];
+    b.onclick = function () { fecharMenus(); o.acao(); };
+  });
+}
+
+function abrirMenuCartao(idAtalho, ancora) {
+  var i = achar(idAtalho);
+  if (i < 0) return;
+  var it = itens[i];
+  abrirMenu(ancora, [
+    { rot: "✏️ Editar", acao: function () { abrirFormulario(it); } },
+    { rot: it.fixado ? "☆ Desafixar" : "★ Fixar no topo", acao: function () {
+        it.fixado = !it.fixado; Guardados.gravar(); desenhar();
+      } },
+    { rot: "🔗 Copiar o link", acao: function () { copiar(it.url); } },
+    { separador: true },
+    { rot: "↑ Mover para cima", acao: function () { moverPasso(idAtalho, -1); } },
+    { rot: "↓ Mover para baixo", acao: function () { moverPasso(idAtalho, 1); } },
+    { separador: true },
+    { rot: "🗑️ Excluir", perigo: true, acao: function () { confirmarExclusao(it); } }
+  ]);
+}
+
+document.getElementById("btMenu").addEventListener("click", function (e) {
+  e.stopPropagation();
+  abrirMenu(e.currentTarget, [
+    { rot: "⭳ Exportar (salvar arquivo)", acao: exportar },
+    { rot: "⭱ Importar (abrir arquivo)", acao: importar },
+    { separador: true },
+    { rot: "↺ Trazer os sistemas da Teccel", acao: restaurarPadrao },
+    { separador: true },
+    { rot: "🗑️ Apagar todos os atalhos", perigo: true, acao: apagarTudo }
+  ]);
+});
+
+function copiar(txt) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(
+      function () { recado("Link copiado."); },
+      function () { recado("Não deu para copiar."); }
+    );
+  } else {
+    /* Navegador antigo ou página sem HTTPS: o campo escondido ainda funciona. */
+    var t = document.createElement("textarea");
+    t.value = txt; document.body.appendChild(t); t.select();
+    try { document.execCommand("copy"); recado("Link copiado."); }
+    catch (e) { recado("Não deu para copiar."); }
+    t.remove();
+  }
+}
+
+/* ---------- formulário ---------- */
+function abrirFormulario(existente) {
+  var novo = !existente;
+  var it = existente || { nome: "", url: "", grupo: "", fixado: false };
+  var grupos = [];
+  itens.forEach(function (x) {
+    var g = (x.grupo || "").trim();
+    if (g && grupos.indexOf(g) < 0) grupos.push(g);
+  });
+
+  var fundo = document.createElement("div");
+  fundo.className = "fundo";
+  fundo.innerHTML =
+    '<form class="dialogo">' +
+      '<div class="dcab"><h3>' + (novo ? "Novo atalho" : "Editar atalho") + "</h3>" +
+        '<button type="button" class="btn icone" data-x>✕</button></div>' +
+      '<div class="dcorpo">' +
+        '<label class="campo"><span>Nome</span>' +
+          '<input name="nome" value="' + esc(it.nome) + '" placeholder="Painel de Inspeções" required autocomplete="off"></label>' +
+        '<label class="campo"><span>Endereço</span>' +
+          '<input name="url" value="' + esc(it.url) + '" placeholder="painel.teccel.com.br" ' +
+            'inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false">' +
+          '<span class="dica">Pode colar o endereço direto do navegador. Sem o https:// eu completo.</span></label>' +
+        '<label class="campo"><span>Grupo</span>' +
+          '<input name="grupo" value="' + esc(it.grupo || "") + '" list="lista-grupos" ' +
+            'placeholder="SESMT, Obras, Operação…" autocomplete="off">' +
+          '<datalist id="lista-grupos">' + grupos.map(function (g) {
+            return '<option value="' + esc(g) + '">'; }).join("") + "</datalist>" +
+          '<span class="dica">Serve para separar em seções. Em branco, entra em “Outros”.</span></label>' +
+        '<label class="marcar"><input type="checkbox" name="fixado"' + (it.fixado ? " checked" : "") +
+          "> Fixar no topo</label>" +
+      "</div>" +
+      '<div class="derro"></div>' +
+      '<div class="drod"><button type="button" class="btn" data-x>Cancelar</button>' +
+        '<button type="submit" class="btn principal">' + (novo ? "Adicionar" : "Salvar") + "</button></div>" +
+    "</form>";
+  document.body.appendChild(fundo);
+
+  var form = fundo.querySelector("form");
+  var erro = fundo.querySelector(".derro");
+  function fechar() { fundo.remove(); document.removeEventListener("keydown", aoTeclar); }
+  function aoTeclar(e) { if (e.key === "Escape") fechar(); }
+  document.addEventListener("keydown", aoTeclar);
+  fundo.querySelectorAll("[data-x]").forEach(function (b) { b.onclick = fechar; });
+  /* Clique fora NÃO fecha: no meio de digitar um endereço longo, um toque
+     errado apagaria tudo. Mesma decisão do cadastro do painel. */
+  form.addEventListener("click", function (e) { e.stopPropagation(); });
+
+  form.elements.nome.focus();
+
+  form.onsubmit = function (e) {
+    e.preventDefault();
+    var nome = form.elements.nome.value.trim();
+    var url = normalizarUrl(form.elements.url.value);
+    if (!nome) { erro.textContent = "Dê um nome ao atalho."; return; }
+    if (!url) { erro.textContent = "Endereço inválido. Exemplo: painel.teccel.com.br"; return; }
+
+    if (novo) {
+      itens.push({ id: id(), nome: nome, url: url,
+        grupo: form.elements.grupo.value.trim(), fixado: form.elements.fixado.checked });
+    } else {
+      it.nome = nome; it.url = url;
+      it.grupo = form.elements.grupo.value.trim();
+      it.fixado = form.elements.fixado.checked;
+    }
+    Guardados.gravar();
+    fechar();
+    desenhar();
+    recado(novo ? "Atalho adicionado." : "Atalho salvo.");
+  };
+}
+
+function confirmar(titulo, texto, rotuloOk, acao) {
+  var fundo = document.createElement("div");
+  fundo.className = "fundo";
+  fundo.innerHTML =
+    '<div class="dialogo"><div class="dcab"><h3>' + esc(titulo) + "</h3></div>" +
+    '<div class="dcorpo"><div style="line-height:1.5">' + texto + "</div></div>" +
+    '<div class="drod"><button type="button" class="btn" data-x>Cancelar</button>' +
+      '<button type="button" class="btn principal" data-ok>' + esc(rotuloOk) + "</button></div></div>";
+  document.body.appendChild(fundo);
+  function fechar() { fundo.remove(); }
+  fundo.querySelectorAll("[data-x]").forEach(function (b) { b.onclick = fechar; });
+  fundo.querySelector("[data-ok]").onclick = function () { fechar(); acao(); };
+}
+
+function confirmarExclusao(it) {
+  confirmar("Excluir atalho", "Excluir <b>" + esc(it.nome) + "</b>? O site não é afetado — some só o atalho.",
+    "Excluir", function () {
+      var i = achar(it.id);
+      if (i >= 0) itens.splice(i, 1);
+      Guardados.gravar(); desenhar();
+      recado("Atalho excluído.");
+    });
+}
+
+function apagarTudo() {
+  confirmar("Apagar todos", "Isto apaga os <b>" + itens.length + "</b> atalhos deste aparelho. " +
+    "Exporte antes se quiser poder voltar atrás.", "Apagar tudo", function () {
+      itens = []; Guardados.gravar(); desenhar();
+      recado("Lista apagada.");
+    });
+}
+
+function restaurarPadrao() {
+  /* Acrescenta, não substitui: quem já cadastrou os seus não quer perdê-los
+     só porque pediu os da Teccel de volta. Endereço repetido não entra. */
+  var jaTem = {};
+  itens.forEach(function (i) { jaTem[i.url] = true; });
+  var novos = PADRAO.filter(function (p) { return !jaTem[p.url]; });
+  if (!novos.length) { recado("Os sistemas da Teccel já estão na lista."); return; }
+  novos.forEach(function (p) {
+    itens.push({ id: id(), nome: p.nome, url: p.url, grupo: p.grupo, fixado: false });
+  });
+  Guardados.gravar(); desenhar();
+  recado(novos.length + (novos.length === 1 ? " atalho trazido." : " atalhos trazidos."));
+}
+
+/* ---------- exportar e importar ----------
+   A lista mora no aparelho, então trocar de celular apagaria tudo. O arquivo
+   é a ponte: exporta num, importa no outro. Também serve de backup antes de
+   uma limpeza. */
+function exportar() {
+  var dados = JSON.stringify({ app: "atalhos-teccel", versao: VERSAO, itens: itens }, null, 1);
+  var blob = new Blob([dados], { type: "application/json" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "atalhos-teccel-" + new Date().toISOString().slice(0, 10) + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  recado("Arquivo gerado.");
+}
+
+function importar() {
+  var inp = document.createElement("input");
+  inp.type = "file"; inp.accept = "application/json,.json";
+  inp.onchange = function () {
+    var f = inp.files && inp.files[0];
+    if (!f) return;
+    var leitor = new FileReader();
+    leitor.onload = function () {
+      var lidos;
+      try {
+        var d = JSON.parse(leitor.result);
+        lidos = Array.isArray(d) ? d : d.itens;
+        if (!Array.isArray(lidos)) throw new Error("formato");
+      } catch (e) {
+        recado("Arquivo não reconhecido.");
+        return;
+      }
+      /* Junta com o que já existe, sem repetir endereço: importar duas vezes
+         não pode encher a tela de cartões iguais. */
+      var jaTem = {};
+      itens.forEach(function (i) { jaTem[i.url] = true; });
+      var entraram = 0;
+      lidos.forEach(function (x) {
+        var url = normalizarUrl(x && x.url);
+        if (!url || jaTem[url]) return;
+        jaTem[url] = true; entraram++;
+        itens.push({ id: id(), nome: String(x.nome || dominio(url)), url: url,
+          grupo: String(x.grupo || ""), fixado: !!x.fixado });
+      });
+      Guardados.gravar(); desenhar();
+      recado(entraram ? entraram + (entraram === 1 ? " atalho importado." : " atalhos importados.")
+                      : "Nada novo no arquivo.");
+    };
+    leitor.readAsText(f);
+  };
+  inp.click();
+}
+
+/* ---------- instalar no aparelho ----------
+   O Chrome (Android e PC) avisa quando dá para instalar; o botão só aparece
+   nessa hora. No iPhone não existe esse aviso: lá é Compartilhar → Adicionar
+   à Tela de Início, e é isso que o texto do rodapé explica. */
+window.addEventListener("beforeinstallprompt", function (e) {
+  e.preventDefault();
+  eventoInstalar = e;
+  document.getElementById("btInstalar").classList.remove("oculto");
+});
+document.getElementById("btInstalar").addEventListener("click", function () {
+  if (!eventoInstalar) return;
+  eventoInstalar.prompt();
+  eventoInstalar.userChoice.then(function () {
+    eventoInstalar = null;
+    document.getElementById("btInstalar").classList.add("oculto");
+  });
+});
+window.addEventListener("appinstalled", function () {
+  document.getElementById("btInstalar").classList.add("oculto");
+  recado("Instalado. Abra pelo ícone, sem barra de endereço.");
+});
+
+function rodape() {
+  var instalado = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  document.getElementById("estado").textContent = instalado
+    ? "Instalado neste aparelho · funciona sem sinal"
+    : (ios ? "Para instalar: Compartilhar → Adicionar à Tela de Início"
+           : "Dá para instalar neste aparelho pelo botão ⤓ Instalar");
+  document.getElementById("versao").textContent = "v" + VERSAO;
+}
+
+/* ---------- início ---------- */
+document.getElementById("btNovo").addEventListener("click", function () { abrirFormulario(null); });
+document.getElementById("busca").addEventListener("input", function (e) {
+  busca = e.target.value; desenhar();
+});
+
+var guardado = Guardados.ler();
+if (guardado) {
+  itens = guardado;
+} else {
+  itens = PADRAO.map(function (p) {
+    return { id: id(), nome: p.nome, url: p.url, grupo: p.grupo, fixado: false };
+  });
+  Guardados.gravar();
+}
+desenhar();
+rodape();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
+}
+</script>
