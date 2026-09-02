@@ -204,7 +204,7 @@ footer .espaco{flex:1}
    num arquivo, e a lista de fábrica, que já vem com os sistemas
    da Teccel — quem instala não começa numa tela vazia.
    ============================================================ */
-var VERSAO = "1.5";
+var VERSAO = "1.6";
 var CHAVE  = "atalhos-teccel-v1";
 
 /* Lista de fábrica: os sistemas que já estão no ar. Vale só na primeira
@@ -215,6 +215,7 @@ var PADRAO = [
   { nome: "Análise manual de obras pagas", url: "https://teccelia2001-ux.github.io/analise-obra-paga/",   grupo: "Obras" },
   { nome: "Análise detalhada de obras pagas", url: "https://teccelia2001-ux.github.io/analise-obras-pagas/", grupo: "Obras" },
   { nome: "Obras por serviço",          url: "https://teccelia2001-ux.github.io/obras-por-servico/",   grupo: "Obras" },
+  { nome: "Programação de Obras",       url: "https://programacao.teccelengenharia.tech/",               grupo: "Obras" },
   { nome: "Controle de leite",          url: "https://teccelia2001-ux.github.io/controle-leite/",         grupo: "Operação" }
 ];
 
@@ -344,7 +345,11 @@ var ICONES_DOS_NOSSOS = [
   { onde: "/analise-obra-paga",      arquivo: "icones/site-analise.svg" },
   { onde: "/obras-por-servico",      arquivo: "icones/site-obras.svg" },
   { onde: "/controle-leite",         arquivo: "icones/site-leite.png" },
-  { onde: "/atalhos-teccel",         arquivo: "icones/icone-192.png" }
+  { onde: "/atalhos-teccel",         arquivo: "icones/icone-192.png" },
+  /* Este não é do github.io: a Programação de Obras roda em servidor próprio,
+     em programacao.teccelengenharia.tech. Por isso a tabela casa por PEDAÇO DO
+     ENDEREÇO, e não por caminho depois do domínio. */
+  { onde: "programacao.teccelengenharia.tech", arquivo: "icones/site-programacao.png" }
 ];
 function iconeDoAtalho(it) {
   if (it.icone) return it.icone;

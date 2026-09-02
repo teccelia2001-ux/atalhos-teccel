@@ -14,7 +14,7 @@
    próprio aparelho (localStorage), gravados pela página. Ver Guardados,
    no index.html. */
 
-var VERSAO = "atalhos-v6";   // v6: analise detalhada de obras pagas (02/09/2026)
+var VERSAO = "atalhos-v7";   // v7: Programacao de Obras (02/09/2026)
 var ESSENCIAIS = [
   "./",
   "./index.html",
@@ -29,7 +29,8 @@ var ESSENCIAIS = [
   "./icones/site-analise.svg",
   "./icones/site-obras.svg",
   "./icones/site-leite.png",
-  "./icones/site-detalhada.svg"
+  "./icones/site-detalhada.svg",
+  "./icones/site-programacao.png"
 ];
 
 self.addEventListener("install", function (e) {
