@@ -125,6 +125,19 @@ main{padding:14px 12px 90px;max-width:1180px;margin:0 auto}
 .vazio{text-align:center;color:var(--txt2);padding:50px 20px;line-height:1.6}
 .vazio b{display:block;color:var(--txt);font-size:17px;margin-bottom:6px}
 
+/* ---- soltar um link na janela ----
+   Aparece só enquanto há um link sendo arrastado por cima. Cobre a tela
+   inteira de propósito: mirar num alvo pequeno com o link na mão é pior do
+   que soltar em qualquer lugar. */
+#solte{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;
+  background:rgba(251,69,19,.10);backdrop-filter:blur(2px)}
+#solte div{display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding:26px 34px;border-radius:18px;background:var(--painel);
+  border:3px dashed var(--acento);box-shadow:0 18px 50px rgba(60,44,28,.26);
+  font-size:17px;font-weight:800;color:var(--acento-forte);text-align:center}
+#solte small{font-size:12.5px;font-weight:600;color:var(--txt2)}
+#solte .seta{font-size:30px;line-height:1}
+
 /* ---- diálogo ---- */
 .fundo{position:fixed;inset:0;z-index:70;background:rgba(36,31,26,.45);
   display:flex;align-items:center;justify-content:center;padding:16px}
@@ -211,7 +224,7 @@ footer .espaco{flex:1}
    num arquivo, e a lista de fábrica, que já vem com os sistemas
    da Teccel — quem instala não começa numa tela vazia.
    ============================================================ */
-var VERSAO = "2.0";
+var VERSAO = "2.1";
 var CHAVE  = "atalhos-teccel-v1";
 
 /* Lista de fábrica: os sistemas que já estão no ar. Vale só na primeira
@@ -613,10 +626,13 @@ function copiar(txt) {
   }
 }
 
-/* ---------- formulário ---------- */
-function abrirFormulario(existente) {
+/* ---------- formulário ----------
+   `rascunho` preenche os campos de um atalho NOVO — é o que o link arrastado
+   usa. Não dá para passá-lo como `existente`: aí o salvar alteraria aquele
+   objeto em vez de acrescentar um item, e o atalho nunca entraria na lista. */
+function abrirFormulario(existente, rascunho) {
   var novo = !existente;
-  var it = existente || { nome: "", url: "", grupo: "", fixado: false };
+  var it = existente || rascunho || { nome: "", url: "", grupo: "", fixado: false };
   var grupos = [];
   itens.forEach(function (x) {
     var g = (x.grupo || "").trim();
@@ -973,6 +989,105 @@ if (guardado) {
   });
   Guardados.gravar();
 }
+/* ---------- arrastar um link para dentro ----------
+
+   Pegar o endereço na barra do navegador (ou um link de uma página) e soltar
+   aqui vira um atalho. É o caminho mais curto que existe: sem copiar, sem
+   colar, sem ＋ Novo.
+
+   Abre o formulário já preenchido em vez de adicionar na hora — o nome que
+   vem do navegador costuma ser o título da aba inteiro ("Teccel — Programação
+   de Obras · Energisa"), e o grupo ninguém adivinha. Confirmar é um toque.
+
+   No celular isto não existe (não há o que arrastar), e é por isso que o
+   ＋ Novo continua onde está. */
+function urlArrastada(dt) {
+  if (!dt) return "";
+  var uri = "";
+  try { uri = dt.getData("text/uri-list") || ""; } catch (e) {}
+  if (uri) {
+    /* text/uri-list pode trazer várias linhas e comentários começados por #. */
+    var linhas = uri.split(/[\r\n]+/).filter(function (l) { return l && l.charAt(0) !== "#"; });
+    uri = linhas[0] || "";
+  }
+  if (!uri) { try { uri = dt.getData("text/plain") || ""; } catch (e) {} }
+  return normalizarUrl(uri);
+}
+
+function nomeArrastado(dt, url) {
+  var html = "";
+  try { html = dt.getData("text/html") || ""; } catch (e) {}
+  if (html) {
+    /* DOMParser e não innerHTML: o documento que ele cria é inerte, não baixa
+       imagem nem dispara onerror. É HTML que veio de fora — trato como dado. */
+    try {
+      var doc = new DOMParser().parseFromString(html, "text/html");
+      var a = doc.querySelector("a");
+      var t = ((a ? a.textContent : doc.body.textContent) || "").trim().replace(/\s+/g, " ");
+      if (t && t.length <= 70 && !/^https?:/i.test(t)) return t;
+    } catch (e) {}
+  }
+  /* Sem título: o último pedaço do caminho diz mais que o domínio sozinho —
+     ".../painel-inspecoes-sesmt/" vira "Painel inspecoes sesmt". */
+  try {
+    var p = new URL(url);
+    var fatias = p.pathname.split("/").filter(Boolean);
+    var ultima = fatias.length ? fatias[fatias.length - 1].replace(/\.[a-z]{2,5}$/i, "") : "";
+    if (ultima && !/^\d+$/.test(ultima)) {
+      var limpo = decodeURIComponent(ultima).replace(/[-_+]+/g, " ").trim();
+      if (limpo) return limpo.charAt(0).toUpperCase() + limpo.slice(1);
+    }
+    return p.hostname.replace(/^www\./, "");
+  } catch (e) { return dominio(url); }
+}
+
+function alvoDeSoltar(mostrar) {
+  var v = document.getElementById("solte");
+  if (!mostrar) { if (v) v.remove(); return; }
+  if (v) return;
+  v = document.createElement("div");
+  v.id = "solte";
+  v.innerHTML = '<div><span class="seta">⤵</span>Solte o link para adicionar' +
+    "<small>vira um atalho novo, já com o endereço preenchido</small></div>";
+  document.body.appendChild(v);
+}
+
+/* Arrastar de FORA traz tipos de dado; reordenar cartão aqui dentro, não.
+   É assim que um não atrapalha o outro. */
+function arrastaDeFora(e) {
+  if (arrastando) return false;
+  var t = e.dataTransfer && e.dataTransfer.types;
+  if (!t) return false;
+  var lista = Array.prototype.slice.call(t);
+  return lista.indexOf("text/uri-list") >= 0 || lista.indexOf("text/plain") >= 0;
+}
+
+document.addEventListener("dragover", function (e) {
+  if (!arrastaDeFora(e)) return;
+  e.preventDefault();
+  try { e.dataTransfer.dropEffect = "copy"; } catch (x) {}
+  alvoDeSoltar(true);
+});
+/* relatedTarget nulo = o ponteiro saiu da janela. Sem esta checagem o alvo
+   piscaria a cada elemento por que o link passasse. */
+document.addEventListener("dragleave", function (e) {
+  if (!e.relatedTarget) alvoDeSoltar(false);
+});
+document.addEventListener("dragend", function () { alvoDeSoltar(false); });
+document.addEventListener("drop", function (e) {
+  if (!arrastaDeFora(e)) return;
+  e.preventDefault();
+  alvoDeSoltar(false);
+  var url = urlArrastada(e.dataTransfer);
+  if (!url) { recado("Isso não é um link que eu consiga abrir."); return; }
+
+  var repetido = itens.filter(function (i) { return i.url === url; })[0];
+  if (repetido) { recado("Este endereço já está em “" + repetido.nome + "”."); return; }
+
+  abrirFormulario(null, { nome: nomeArrastado(e.dataTransfer, url), url: url,
+    grupo: "", fixado: false, icone: "" });
+});
+
 desenhar();
 verSeVeioChave();
 rodape();
