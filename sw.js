@@ -14,7 +14,7 @@
    próprio aparelho (localStorage), gravados pela página. Ver Guardados,
    no index.html. */
 
-var VERSAO = "atalhos-v10";  // v10: icone proprio do app (10/11/2026)
+var VERSAO = "atalhos-v11";  // v11: icone grafite com a grade laranja (10/11/2026)
 var ESSENCIAIS = [
   "./",
   "./index.html",
