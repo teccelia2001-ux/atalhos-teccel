@@ -14,7 +14,7 @@
    próprio aparelho (localStorage), gravados pela página. Ver Guardados,
    no index.html. */
 
-var VERSAO = "atalhos-v9";   // v9: icone do Citrix Workspace (02/09/2026)
+var VERSAO = "atalhos-v10";  // v10: icone proprio do app (10/11/2026)
 var ESSENCIAIS = [
   "./",
   "./index.html",
