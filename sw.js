@@ -14,7 +14,7 @@
    próprio aparelho (localStorage), gravados pela página. Ver Guardados,
    no index.html. */
 
-var VERSAO = "atalhos-v12";  // v12: arrastar link para adicionar (10/11/2026)
+var VERSAO = "atalhos-v13";  // v13: icones de medicao campo, croqui e supabase (23/11/2026)
 var ESSENCIAIS = [
   "./",
   "./index.html",
@@ -31,7 +31,10 @@ var ESSENCIAIS = [
   "./icones/site-leite.png",
   "./icones/site-detalhada.svg",
   "./icones/site-programacao.png",
-  "./icones/site-citrix.png"
+  "./icones/site-citrix.png",
+  "./icones/site-medicao-campo.png",
+  "./icones/site-medicao-croqui.png",
+  "./icones/site-supabase.png"
 ];
 
 self.addEventListener("install", function (e) {
