@@ -224,7 +224,7 @@ footer .espaco{flex:1}
    num arquivo, e a lista de fábrica, que já vem com os sistemas
    da Teccel — quem instala não começa numa tela vazia.
    ============================================================ */
-var VERSAO = "2.2";
+var VERSAO = "2.3";
 var CHAVE  = "atalhos-teccel-v1";
 
 /* Lista de fábrica: os sistemas que já estão no ar. Vale só na primeira
@@ -250,6 +250,27 @@ var RENOMEADOS = [
   { url: "https://teccelia2001-ux.github.io/analise-obra-paga/",
     de: "Análise de obra paga", para: "Análise manual de obras pagas" }
 ];
+
+/* ---------- a base: a lista que todo aparelho enxerga ----------
+
+   Publicada por uma conta só, no projeto painel-sesmt — o mesmo banco do
+   painel e do app de inspeções. LER é livre, sem login: a lista é só
+   endereço de site, e exigir conta para ver atalho transformaria um app de
+   um toque num app de dois. PUBLICAR exige o login, e a regra de quem pode
+   está no banco, não aqui — ver supabase/01-lista-de-atalhos.sql.
+
+   A chave abaixo é a publicável (anon). Ela não dá poder nenhum sozinha: o
+   que ela pode fazer é exatamente o que as políticas do banco permitem ao
+   visitante, que aqui é ler esta lista. */
+var BASE = {
+  url: "https://ldqegnfcjeljvywbravl.supabase.co",
+  chave: "sb_publishable_4IcV3231DtKqDuBdoPdG8A_sgt8vbOP",
+  tabela: "atalhos_lista",
+  carimbo: "atalhos-base-aplicada",   // qual publicação este aparelho já aplicou
+  salvaVidas: "atalhos-antes-da-base" // a lista local de antes da primeira troca
+};
+var baseEm = null;      // quando a lista no ar foi publicada
+var basePor = null;     // por quem
 
 var itens = [];
 var busca = "";
@@ -604,6 +625,9 @@ function abrirMenuCartao(idAtalho, ancora) {
 document.getElementById("btMenu").addEventListener("click", function (e) {
   e.stopPropagation();
   abrirMenu(e.currentTarget, [
+    { rot: "☁ Publicar para todos", acao: publicarNaBase },
+    { rot: "⟳ Buscar a lista da equipe", acao: function () { aplicarBase(true); } },
+    { separador: true },
     { rot: "🔑 Levar para outro aparelho", acao: mostrarChave },
     { separador: true },
     { rot: "⭳ Exportar (salvar arquivo)", acao: exportar },
@@ -886,6 +910,165 @@ async function verSeVeioChave() {
     });
 }
 
+/* ---------- a base ----------
+
+   Ao abrir, o app pergunta ao banco qual é a lista da equipe. Se houver uma
+   publicação que este aparelho ainda não aplicou, ela SUBSTITUI a lista
+   daqui — foi a regra escolhida: a lista publicada é a que vale, em todo
+   aparelho que abrir o link.
+
+   A troca acontece uma vez por publicação, não a cada abertura: o aparelho
+   guarda o carimbo da última que aplicou. Sem isso, qualquer atalho que
+   alguém acrescentasse no próprio aparelho sumiria no recarregar seguinte,
+   e a tela viraria areia movediça.
+
+   Antes da PRIMEIRA troca, a lista que estava aqui é guardada num canto. Não
+   é uma tela, nem um botão: é a rede de proteção para o caso de alguém
+   publicar uma lista errada e perder o que tinha. Está em
+   localStorage["atalhos-antes-da-base"]. */
+function cabecalhosBase(token) {
+  var h = { "apikey": BASE.chave, "Content-Type": "application/json" };
+  h["Authorization"] = "Bearer " + (token || BASE.chave);
+  return h;
+}
+
+async function baixarBase() {
+  var r = await fetch(BASE.url + "/rest/v1/" + BASE.tabela +
+    "?id=eq.1&select=dados,atualizado_em,por", { headers: cabecalhosBase(null) });
+  if (!r.ok) throw new Error("banco respondeu " + r.status);
+  var linhas = await r.json();
+  return linhas && linhas[0] ? linhas[0] : null;
+}
+
+/* pedido = true quando veio do menu: aí vale avisar mesmo quando não há nada
+   novo. Na abertura o silêncio é melhor — ninguém quer um recado a cada vez
+   que abre o app. */
+async function aplicarBase(pedido) {
+  var linha;
+  try { linha = await baixarBase(); }
+  catch (e) {
+    if (pedido) recado("Não deu para falar com o banco agora.");
+    return;
+  }
+  if (!linha) { if (pedido) recado("Ainda não há lista publicada."); return; }
+
+  baseEm = linha.atualizado_em; basePor = linha.por;
+  rodape();
+
+  var jaAplicada = null;
+  try { jaAplicada = localStorage.getItem(BASE.carimbo); } catch (e) {}
+  if (jaAplicada === linha.atualizado_em) {
+    if (pedido) recado("Sua lista já é a publicada.");
+    return;
+  }
+
+  var recebidos;
+  try { recebidos = daChave(JSON.stringify({ i: linha.dados || [] })); }
+  catch (e) { if (pedido) recado("A lista publicada veio num formato estranho."); return; }
+  if (!recebidos.length) { if (pedido) recado("A lista publicada está vazia."); return; }
+
+  try {
+    if (!localStorage.getItem(BASE.salvaVidas)) {
+      localStorage.setItem(BASE.salvaVidas, JSON.stringify({ itens: itens, em: Date.now() }));
+    }
+  } catch (e) {}
+
+  itens = recebidos.map(function (x) {
+    var url = normalizarUrl(x.url);
+    if (!url) return null;
+    return { id: id(), nome: String(x.nome || dominio(url)), url: url,
+             icone: normalizarUrl(x.icone), grupo: String(x.grupo || ""), fixado: !!x.fixado };
+  }).filter(Boolean);
+
+  Guardados.gravar();
+  try { localStorage.setItem(BASE.carimbo, linha.atualizado_em); } catch (e) {}
+  desenhar(); rodape();
+  recado("Lista da equipe aplicada: " + itens.length + " atalhos.");
+}
+
+/* ---------- publicar ----------
+   Entrar é com a conta única de publicação. O token fica só na memória desta
+   aba: não vai para o armazenamento, porque senha de publicar não precisa
+   sobreviver a fechar o app — publicar é coisa de vez em quando. */
+async function entrarParaPublicar(email, senha) {
+  var r = await fetch(BASE.url + "/auth/v1/token?grant_type=password", {
+    method: "POST",
+    headers: { "apikey": BASE.chave, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email, password: senha })
+  });
+  var d = await r.json().catch(function () { return {}; });
+  if (!r.ok || !d.access_token) {
+    throw new Error(d.error_description || d.msg || "E-mail ou senha não conferem.");
+  }
+  return d.access_token;
+}
+
+async function enviarParaBase(token, email) {
+  var corpo = { dados: JSON.parse(paraChave(itens)).i, atualizado_em: new Date().toISOString(), por: email };
+  var r = await fetch(BASE.url + "/rest/v1/" + BASE.tabela + "?id=eq.1", {
+    method: "PATCH",
+    headers: Object.assign(cabecalhosBase(token), { "Prefer": "return=representation" }),
+    body: JSON.stringify(corpo)
+  });
+  var d = await r.json().catch(function () { return null; });
+  if (!r.ok) throw new Error((d && (d.message || d.hint)) || "o banco recusou (" + r.status + ")");
+  /* Resposta vazia com 200 é o jeito do Postgres dizer "a política não deixou
+     esta linha ser vista nem alterada" — e não "deu certo". Sem esta
+     conferência, publicar com a conta errada diria "publicado" e não teria
+     publicado nada. */
+  if (!d || !d.length) throw new Error("esta conta não tem permissão de publicar.");
+  return d[0];
+}
+
+function publicarNaBase() {
+  if (!itens.length) { recado("Não há o que publicar."); return; }
+
+  var fundo = document.createElement("div");
+  fundo.className = "fundo";
+  fundo.innerHTML =
+    '<form class="dialogo"><div class="dcab"><h3>Publicar para todos</h3>' +
+      '<button type="button" class="btn icone" data-x>&#10005;</button></div>' +
+    '<div class="dcorpo">' +
+      '<div style="line-height:1.5">Os <b>' + itens.length + '</b> atalhos desta tela passam a ser ' +
+        'a lista da equipe. Todo aparelho que abrir o app vai receber esta lista <b>no lugar da dele</b>.</div>' +
+      '<label class="campo"><span>E-mail</span>' +
+        '<input name="email" type="email" required autocomplete="username" ' +
+          'autocapitalize="none" spellcheck="false" placeholder="conta de publicação"></label>' +
+      '<label class="campo"><span>Senha</span>' +
+        '<input name="senha" type="password" required autocomplete="current-password"></label>' +
+    '</div>' +
+    '<div class="derro"></div>' +
+    '<div class="drod"><button type="button" class="btn" data-x>Cancelar</button>' +
+      '<button type="submit" class="btn principal">☁ Publicar</button></div></form>';
+  document.body.appendChild(fundo);
+
+  var form = fundo.querySelector("form");
+  var erro = fundo.querySelector(".derro");
+  fundo.querySelectorAll("[data-x]").forEach(function (b) { b.onclick = function () { fundo.remove(); }; });
+  form.elements.email.focus();
+
+  form.onsubmit = async function (e) {
+    e.preventDefault();
+    var ok = form.querySelector(".btn.principal");
+    ok.disabled = true; erro.textContent = "";
+    var antes = ok.textContent; ok.textContent = "Publicando…";
+    try {
+      var email = form.elements.email.value.trim().toLowerCase();
+      var token = await entrarParaPublicar(email, form.elements.senha.value);
+      var linha = await enviarParaBase(token, email);
+      /* Carimba aqui também: quem publicou já ESTÁ com a lista publicada, e
+         sem isto o próprio aparelho se "atualizaria" na abertura seguinte. */
+      baseEm = linha.atualizado_em; basePor = linha.por;
+      try { localStorage.setItem(BASE.carimbo, linha.atualizado_em); } catch (x) {}
+      fundo.remove(); rodape();
+      recado("Publicado. Os outros aparelhos recebem ao abrir.");
+    } catch (x) {
+      erro.textContent = x.message;
+      ok.disabled = false; ok.textContent = antes;
+    }
+  };
+}
+
 /* ---------- exportar e importar ----------
    A lista mora no aparelho, então trocar de celular apagaria tudo. O arquivo
    é a ponte: exporta num, importa no outro. Também serve de backup antes de
@@ -965,10 +1148,22 @@ window.addEventListener("appinstalled", function () {
 function rodape() {
   var instalado = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  document.getElementById("estado").textContent = instalado
+  var texto = instalado
     ? "Instalado neste aparelho · funciona sem sinal"
     : (ios ? "Para instalar: Compartilhar → Adicionar à Tela de Início"
            : "Dá para instalar neste aparelho pelo botão ⤓ Instalar");
+  /* Quando a lista é a da equipe, isso é o que mais importa saber no rodapé:
+     diz de quando ela é, e portanto se o que está na tela é o que foi
+     publicado ou algo que alguém mexeu aqui depois. */
+  if (baseEm) {
+    var d = new Date(baseEm);
+    texto = "Lista da equipe de " + d.toLocaleDateString("pt-BR") +
+      " às " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) +
+      (basePor ? " · por " + basePor : "");
+  }
+  document.getElementById("estado").textContent = texto;
+  document.getElementById("estado").title = instalado
+    ? "Instalado neste aparelho" : "Ainda não instalado";
   document.getElementById("versao").textContent = "v" + VERSAO;
 }
 
@@ -1096,6 +1291,12 @@ document.addEventListener("drop", function (e) {
 desenhar();
 verSeVeioChave();
 rodape();
+
+/* A base é buscada DEPOIS de desenhar, nunca antes: a tela aparece na hora,
+   com o que o aparelho já tem, e a lista da equipe entra quando chegar. Sem
+   sinal, não chega e nada muda — que é o comportamento certo para um app que
+   precisa abrir no meio do campo. */
+aplicarBase(false);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {

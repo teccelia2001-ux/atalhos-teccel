@@ -14,7 +14,7 @@
    próprio aparelho (localStorage), gravados pela página. Ver Guardados,
    no index.html. */
 
-var VERSAO = "atalhos-v13";  // v13: icones de medicao campo, croqui e supabase (23/11/2026)
+var VERSAO = "atalhos-v14";  // v14: lista da equipe publicada no banco (23/11/2026)
 var ESSENCIAIS = [
   "./",
   "./index.html",
