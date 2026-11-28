@@ -43,11 +43,16 @@ create table if not exists public.atalhos_quem_publica (
 
 comment on table public.atalhos_quem_publica is 'E-mails autorizados a publicar a lista de atalhos';
 
--- A conta única de publicação. Ela é criada no painel do Supabase, em
--- Authentication → Users → Add user, COM "Auto Confirm User" marcado —
--- usuário sem e-mail confirmado não consegue entrar.
+-- A conta de publicação NÃO é uma conta nova: é uma das que já existem
+-- neste projeto, criadas pelo app de inspeções. Mais uma conta seria mais
+-- uma senha para guardar, sem ganho nenhum.
+--
+-- TROQUE o e-mail abaixo pelo da conta que vai publicar. O lower() não é
+-- enfeite: a política compara com o e-mail que vem dentro do token, e o
+-- Supabase entrega esse e-mail em minúsculas. Gravar 'Fulano@...' aqui
+-- faria a conferência falhar calada, com cara de senha errada.
 insert into public.atalhos_quem_publica (email)
-values ('atalhos@teccel.com.br')
+values (lower('troque-pelo-email-da-conta@gmail.com'))
 on conflict (email) do nothing;
 
 -- ---------- acesso ----------
